@@ -14,7 +14,6 @@ source venv/bin/activate
 pip install -r requirements.txt
 
 # 3. Reiniciar o serviço
-echo "Reiniciando o serviço..."
-sudo systemctl restart nome_do_seu_servico.service # Substitua pelo nome do seu arquivo .service (ex: lista-de-precos)
+sudo systemctl restart lista-de-precos.service
 
 echo "Atualização concluída com sucesso!"
