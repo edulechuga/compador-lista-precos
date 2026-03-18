@@ -4,7 +4,11 @@
 
 echo "Iniciando atualização do serviço..."
 
-# 1. Puxar as últimas alterações do GitHub
+# 1. Parar o serviço atual para segurança
+echo "Parando o serviço..."
+sudo systemctl stop lista-de-precos.service
+
+# 2. Puxar as últimas alterações do GitHub
 echo "Puxando alterações do GitHub..."
 git pull origin main
 
