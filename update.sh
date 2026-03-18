@@ -10,7 +10,7 @@ sudo systemctl stop lista-de-precos.service
 
 # 2. Puxar as últimas alterações do GitHub
 echo "Puxando alterações do GitHub..."
-git pull origin main
+git pull
 
 # 2. Atualizar dependências (se necessário)
 echo "Atualizando dependências do Python..."
