@@ -1,0 +1,6 @@
+python-dotenv
+flask
+pandas
+openpyxl
+rapidfuzz
+numpy

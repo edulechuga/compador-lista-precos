@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Comparador de Listas de Preços</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:            #060c1a;
+      --surface:       rgba(255,255,255,0.04);
+      --border:        rgba(255,255,255,0.08);
+      --border-focus:  rgba(99,102,241,0.6);
+      --primary:       #6366f1;
+      --success:       #10b981;
+      --warning:       #f59e0b;
+      --danger:        #ef4444;
+      --text:          #f1f5f9;
+      --text-muted:    #94a3b8;
+      --radius:        16px;
+      --radius-sm:     10px;
+      --radius-xs:     7px;
+    }
+
+    html, body { height: 100%; font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); overflow-x: hidden; }
+
+    body::before {
+      content: '';
+      position: fixed; inset: 0;
+      background:
+        radial-gradient(ellipse 80% 60% at 20% 20%, rgba(99,102,241,.10) 0%, transparent 60%),
+        radial-gradient(ellipse 60% 50% at 80% 80%, rgba(139,92,246,.08) 0%, transparent 60%);
+      pointer-events: none; z-index: 0;
+    }
+
+    .page {
+      position: relative; z-index: 1;
+      min-height: 100vh;
+      display: flex; flex-direction: column; align-items: center;
+      padding: 48px 16px 80px;
+    }
+
+    /* ── Header ────────────────────────────────────── */
+    .header { text-align: center; margin-bottom: 40px; }
+    .badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: rgba(99,102,241,.15); border: 1px solid rgba(99,102,241,.3);
+      border-radius: 100px; padding: 4px 14px;
+      font-size: 12px; font-weight: 600; color: #a5b4fc;
+      letter-spacing: .05em; text-transform: uppercase; margin-bottom: 18px;
+    }
+    .header h1 {
+      font-size: clamp(26px,4vw,40px); font-weight: 700; line-height: 1.15; margin-bottom: 10px;
+      background: linear-gradient(135deg,#e2e8f0 0%,#a5b4fc 50%,#c4b5fd 100%);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+    }
+    .header p { color: var(--text-muted); font-size: 15px; max-width: 500px; }
+
+    /* ── Card ──────────────────────────────────────── */
+    .card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); backdrop-filter: blur(12px);
+      padding: 32px; width: 100%; max-width: 840px;
+      box-shadow: 0 0 0 1px rgba(255,255,255,.03), 0 24px 64px rgba(0,0,0,.4);
+    }
+    .card-title {
+      font-size: 13px; font-weight: 600; color: var(--text-muted);
+      letter-spacing: .06em; text-transform: uppercase; margin-bottom: 22px;
+    }
+
+    /* ── Drop zones ────────────────────────────────── */
+    .drop-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 16px; }
+
+    .drop-zone {
+      position: relative; border: 2px dashed var(--border); border-radius: var(--radius-sm);
+      padding: 28px 18px; text-align: center; cursor: pointer;
+      transition: all .25s ease; background: rgba(255,255,255,.02);
+    }
+    .drop-zone:hover, .drop-zone.dragover {
+      border-color: var(--primary); background: rgba(99,102,241,.06);
+      transform: translateY(-2px); box-shadow: 0 8px 32px rgba(99,102,241,.12);
+    }
+    .drop-zone.has-file { border-color: var(--success); border-style: solid; background: rgba(16,185,129,.05); }
+    .drop-zone.has-file:hover { box-shadow: 0 8px 32px rgba(16,185,129,.12); }
+    .drop-zone input[type="file"] { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
+
+    .drop-icon {
+      width: 42px; height: 42px; margin: 0 auto 12px;
+      border-radius: 11px; display: flex; align-items: center; justify-content: center;
+      font-size: 20px;
+    }
+    .drop-zone.old-file .drop-icon { background: rgba(245,158,11,.12); }
+    .drop-zone.new-file .drop-icon { background: rgba(99,102,241,.12); }
+    .drop-zone.has-file  .drop-icon { background: rgba(16,185,129,.12); }
+
+    .drop-label { font-size: 12px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; margin-bottom: 5px; }
+    .drop-zone.old-file .drop-label { color: #fbbf24; }
+    .drop-zone.new-file .drop-label { color: #a5b4fc; }
+    .drop-zone.has-file  .drop-label { color: #34d399; }
+
+    .drop-hint   { font-size: 13px; color: var(--text-muted); line-height: 1.5; }
+    .drop-fname  { display: none; font-size: 12px; color: #34d399; font-weight: 500; margin-top: 4px; word-break: break-all; }
+    .drop-zone.has-file .drop-fname { display: block; }
+    .drop-zone.has-file .drop-hint  { display: none; }
+
+    /* ── Sheet selector ────────────────────────────── */
+    .sheet-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 22px; }
+    .sheet-select-wrap { display: none; }
+    .sheet-select-wrap.visible { display: block; }
+    .sheet-select-wrap label { display: block; font-size: 12px; color: var(--text-muted); font-weight: 600; margin-bottom: 6px; letter-spacing: .04em; text-transform: uppercase; }
+    .sheet-select-wrap select {
+      width: 100%; padding: 10px 12px; border-radius: var(--radius-xs);
+      background: rgba(255,255,255,.06); border: 1px solid var(--border);
+      color: var(--text); font-family: inherit; font-size: 13px; cursor: pointer;
+      transition: border-color .2s;
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+      background-repeat: no-repeat; background-position: right 12px center;
+      padding-right: 36px;
+    }
+    .sheet-select-wrap select:focus { outline: none; border-color: var(--border-focus); }
+
+    /* ── Botão ─────────────────────────────────────── */
+    .btn-compare {
+      width: 100%; padding: 15px; border: none; border-radius: var(--radius-sm);
+      background: linear-gradient(135deg, var(--primary) 0%, #8b5cf6 100%);
+      color: #fff; font-family: inherit; font-size: 15px; font-weight: 600;
+      cursor: pointer; transition: all .25s ease;
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      box-shadow: 0 4px 24px rgba(99,102,241,.35);
+    }
+    .btn-compare:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 8px 32px rgba(99,102,241,.5); }
+    .btn-compare:active:not(:disabled) { transform: translateY(0); }
+    .btn-compare:disabled { opacity: .4; cursor: not-allowed; transform: none; box-shadow: none; }
+
+    .spinner { width: 17px; height: 17px; border: 2px solid rgba(255,255,255,.3); border-top-color: #fff; border-radius: 50%; animation: spin .7s linear infinite; display: none; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .btn-compare.loading .spinner  { display: block; }
+    .btn-compare.loading .btn-text { display: none; }
+
+    /* ── Resultados ────────────────────────────────── */
+    #results { display: none; margin-top: 24px; animation: slideUp .4s ease; }
+    @keyframes slideUp { from { opacity:0; transform:translateY(14px); } to { opacity:1; transform:translateY(0); } }
+
+    .result-identical {
+      background: rgba(16,185,129,.08); border: 1px solid rgba(16,185,129,.25);
+      border-radius: var(--radius-sm); padding: 28px; text-align: center;
+    }
+    .result-identical .ico { font-size: 38px; margin-bottom: 10px; }
+    .result-identical h3 { font-size: 18px; font-weight: 700; color: #34d399; margin-bottom: 5px; }
+    .result-identical p  { color: var(--text-muted); font-size: 14px; }
+
+    .diff-title { font-size: 13px; font-weight: 600; color: var(--text-muted); letter-spacing: .06em; text-transform: uppercase; margin-bottom: 14px; }
+
+    .stats-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 11px; margin-bottom: 20px; }
+    .stat-card { background: rgba(255,255,255,.03); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 18px 14px; text-align: center; }
+    .stat-card .stat-number { font-size: 30px; font-weight: 700; line-height: 1; margin-bottom: 5px; }
+    .stat-card .stat-label  { font-size: 12px; color: var(--text-muted); font-weight: 500; line-height: 1.4; }
+    .stat-card.new-products   .stat-number { color: #34d399; }
+    .stat-card.removed-products .stat-number { color: #94a3b8; }
+    .stat-card.modified-price .stat-number { color: #f59e0b; }
+    .stat-card.unchanged      .stat-number { color: var(--text-muted); }
+
+    /* debug info */
+    .col-info { margin-bottom: 16px; background: rgba(255,255,255,.02); border: 1px solid var(--border); border-radius: var(--radius-xs); padding: 12px 14px; }
+    .col-info summary { font-size: 12px; color: var(--text-muted); cursor: pointer; font-weight: 500; }
+    .col-info pre { font-size: 11px; color: #64748b; margin-top: 8px; white-space: pre-wrap; line-height: 1.6; }
+
+    .btn-download {
+      width: 100%; padding: 14px; border: none; border-radius: var(--radius-sm);
+      background: linear-gradient(135deg,#10b981 0%,#059669 100%);
+      color: #fff; font-family: inherit; font-size: 15px; font-weight: 600;
+      cursor: pointer; transition: all .25s ease;
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      box-shadow: 0 4px 20px rgba(16,185,129,.3);
+    }
+    .btn-download:hover { transform: translateY(-2px); box-shadow: 0 8px 28px rgba(16,185,129,.45); }
+
+    .result-error {
+      background: rgba(239,68,68,.08); border: 1px solid rgba(239,68,68,.25);
+      border-radius: var(--radius-sm); padding: 18px;
+      display: flex; gap: 12px; align-items: flex-start;
+    }
+    .result-error .err-ico { font-size: 20px; flex-shrink: 0; }
+    .result-error h4 { font-size: 14px; font-weight: 600; color: #f87171; margin-bottom: 4px; }
+    .result-error p  { font-size: 13px; color: #fca5a5; line-height: 1.5; }
+    .result-error pre { font-size: 11px; color: #fca5a5; margin-top: 8px; white-space: pre-wrap; max-height: 200px; overflow-y: auto; }
+
+    /* ── Legenda ───────────────────────────────────── */
+    .legend { margin-top: 32px; width: 100%; max-width: 840px; }
+    .legend-title { font-size: 12px; color: var(--text-muted); text-transform: uppercase; letter-spacing: .06em; font-weight: 600; margin-bottom: 10px; }
+    .legend-items { display: flex; gap: 18px; flex-wrap: wrap; }
+    .legend-item  { display: flex; align-items: center; gap: 7px; font-size: 13px; color: var(--text-muted); }
+    .legend-dot   { width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; }
+    .legend-dot.new  { background: #C6EFCE; }
+    .legend-dot.inc  { background: #FFC7CE; }
+    .legend-dot.dec  { background: #FFEB9C; }
+    .legend-dot.same { background: rgba(255,255,255,.12); border: 1px solid var(--border); }
+
+    @media (max-width: 560px) {
+      .card { padding: 20px 16px; }
+      .drop-row, .sheet-row { grid-template-columns: 1fr; }
+      .stats-grid { grid-template-columns: 1fr 1fr; }
+    }
+    .legend-dot.rem { background: #D9D9D9; border: 1px solid #bbb; }
+  </style>
+</head>
+<body>
+<div class="page">
+
+  <!-- Header -->
+  <div class="header">
+    <div class="badge">⚡ Ferramenta de análise</div>
+    <h1>Comparador de<br/>Listas de Preços</h1>
+    <p>Identifique produtos novos e alterações de preço entre duas versões da sua planilha Excel.</p>
+  </div>
+
+  <!-- Card -->
+  <div class="card">
+    <div class="card-title">📂 Selecione os arquivos</div>
+
+    <!-- Upload zones -->
+    <div class="drop-row">
+      <div class="drop-zone old-file" id="zone-antigo">
+        <input type="file" id="arquivo_antigo" accept=".xlsx,.xls"
+               onchange="onFileSelect('antigo', this)" />
+        <div class="drop-icon">📄</div>
+        <div class="drop-label">Lista Antiga</div>
+        <div class="drop-hint">Arraste aqui ou clique<br/><span style="font-size:12px;color:var(--text-muted)">(.xlsx / .xls)</span></div>
+        <div class="drop-fname" id="name-antigo"></div>
+      </div>
+
+      <div class="drop-zone new-file" id="zone-novo">
+        <input type="file" id="arquivo_novo" accept=".xlsx,.xls"
+               onchange="onFileSelect('novo', this)" />
+        <div class="drop-icon">📋</div>
+        <div class="drop-label">Lista Nova</div>
+        <div class="drop-hint">Arraste aqui ou clique<br/><span style="font-size:12px;color:var(--text-muted)">(.xlsx / .xls)</span></div>
+        <div class="drop-fname" id="name-novo"></div>
+      </div>
+    </div>
+
+    <!-- Sheet selectors (aparecem apenas quando há múltiplas abas) -->
+    <div class="sheet-row">
+      <div class="sheet-select-wrap" id="sheet-wrap-antigo">
+        <label>Aba — Lista Antiga</label>
+        <select id="sheet-antigo"></select>
+      </div>
+      <div class="sheet-select-wrap" id="sheet-wrap-novo">
+        <label>Aba — Lista Nova</label>
+        <select id="sheet-novo"></select>
+      </div>
+    </div>
+
+    <!-- Botão -->
+    <button class="btn-compare" id="btn-compare" disabled onclick="comparar()">
+      <div class="spinner"></div>
+      <span class="btn-text">🔍&nbsp; Comparar Listas</span>
+    </button>
+
+    <!-- Resultado -->
+    <div id="results"></div>
+  </div>
+
+  <!-- Legenda -->
+  <div class="legend">
+    <div class="legend-title">Legenda do arquivo gerado</div>
+    <div class="legend-items">
+      <div class="legend-item"><div class="legend-dot new"></div> Produto novo</div>
+      <div class="legend-item"><div class="legend-dot rem"></div> Produto removido</div>
+      <div class="legend-item"><div class="legend-dot inc"></div> Aumento de preço</div>
+      <div class="legend-item"><div class="legend-dot dec"></div> Redução de preço</div>
+      <div class="legend-item"><div class="legend-dot same"></div> Sem alteração</div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  let excelB64  = null;
+  let excelName = 'comparacao_precos.xlsx';
+
+  // ── File select ────────────────────────────────────────────────
+  async function onFileSelect(tipo, input) {
+    const zone   = document.getElementById('zone-' + tipo);
+    const nameEl = document.getElementById('name-' + tipo);
+    const file   = input.files[0];
+    if (!file) return;
+
+    zone.classList.add('has-file');
+    nameEl.textContent = '✓ ' + file.name;
+
+    // Buscar abas
+    await loadSheets(tipo, file);
+    checkReady();
+  }
+
+  async function loadSheets(tipo, file) {
+    const wrap   = document.getElementById('sheet-wrap-' + tipo);
+    const select = document.getElementById('sheet-' + tipo);
+
+    const form = new FormData();
+    form.append('arquivo', file);
+
+    try {
+      const res    = await fetch('/abas', { method: 'POST', body: form });
+      const data   = await res.json();
+      const sheets = data.sheets || [];
+
+      select.innerHTML = '';
+      if (sheets.length <= 1) {
+        wrap.classList.remove('visible');
+        return;
+      }
+      sheets.forEach((s, i) => {
+        const opt   = document.createElement('option');
+        opt.value   = s;
+        opt.text    = s;
+        select.appendChild(opt);
+      });
+      wrap.classList.add('visible');
+    } catch (e) {
+      wrap.classList.remove('visible');
+    }
+  }
+
+  function checkReady() {
+    const a = document.getElementById('arquivo_antigo').files.length > 0;
+    const n = document.getElementById('arquivo_novo').files.length > 0;
+    document.getElementById('btn-compare').disabled = !(a && n);
+  }
+
+  // ── Drag & Drop ────────────────────────────────────────────────
+  ['zone-antigo', 'zone-novo'].forEach(id => {
+    const zone = document.getElementById(id);
+    zone.addEventListener('dragover',  e => { e.preventDefault(); zone.classList.add('dragover'); });
+    zone.addEventListener('dragleave', () => zone.classList.remove('dragover'));
+    zone.addEventListener('drop', async e => {
+      e.preventDefault();
+      zone.classList.remove('dragover');
+      const tipo  = id === 'zone-antigo' ? 'antigo' : 'novo';
+      const input = document.getElementById('arquivo_' + tipo);
+      const file  = e.dataTransfer.files[0];
+      if (!file) return;
+      try {
+        const dT = new DataTransfer();
+        dT.items.add(file);
+        input.files = dT.files;
+        await onFileSelect(tipo, input);
+      } catch { /* Safari fallback */ }
+    });
+  });
+
+  // ── Comparar ───────────────────────────────────────────────────
+  async function comparar() {
+    const btn = document.getElementById('btn-compare');
+    btn.classList.add('loading');
+    btn.disabled = true;
+
+    const form = new FormData();
+    form.append('arquivo_antigo', document.getElementById('arquivo_antigo').files[0]);
+    form.append('arquivo_novo',   document.getElementById('arquivo_novo').files[0]);
+
+    const oldSheet = document.getElementById('sheet-antigo').value;
+    const newSheet = document.getElementById('sheet-novo').value;
+    if (oldSheet) form.append('old_sheet', oldSheet);
+    if (newSheet) form.append('new_sheet', newSheet);
+
+    try {
+      const res  = await fetch('/comparar', { method: 'POST', body: form });
+      const data = await res.json();
+
+      if (data.error) {
+        showError(data.error, data.detail);
+      } else if (data.identical) {
+        showIdentical(data);
+      } else {
+        excelB64  = data.excel_b64  || null;
+        excelName = data.excel_name || 'comparacao_precos.xlsx';
+        showDiff(data);
+      }
+    } catch (err) {
+      showError('Erro de conexão com o servidor. Certifique-se de que o Flask está rodando.');
+    } finally {
+      btn.classList.remove('loading');
+      btn.disabled = false;
+    }
+  }
+
+  // ── Renderização de resultados ─────────────────────────────────
+  function showIdentical(data) {
+    show(`
+      <div class="result-identical">
+        <div class="ico">✅</div>
+        <h3>Os arquivos são idênticos</h3>
+        <p>${data.total_new_file} produto(s) comparado(s) — nenhuma diferença encontrada.</p>
+      </div>`);
+  }
+
+  function showDiff(data) {
+    const ci    = data.col_info || {};
+    const oldC  = ci.old || {};
+    const newC  = ci.new || {};
+
+    const colDebug = `
+      <details class="col-info">
+        <summary>🔍 Colunas detectadas</summary>
+        <pre>LISTA ANTIGA → PN: "${oldC.pn||'—'}"  DESC: "${oldC.desc||'—'}"  1-5: "${oldC['1-5']||'—'}"  5-10: "${oldC['5-10']||'—'}"  10+: "${oldC['10+']||'—'}"
+LISTA NOVA  → PN: "${newC.pn||'—'}"  DESC: "${newC.desc||'—'}"  1-5: "${newC['1-5']||'—'}"  5-10: "${newC['5-10']||'—'}"  10+: "${newC['10+']||'—'}"</pre>
+      </details>`;
+
+    const dlBtn = excelB64
+      ? `<button class="btn-download" onclick="downloadExcel()">⬇️&nbsp; Baixar Relatório de Diferenças (.xlsx)</button>`
+      : '';
+
+    show(`
+      <div>
+        <div class="diff-title">📊 Resultado da comparação</div>
+        <div class="stats-grid">
+          <div class="stat-card new-products">
+            <div class="stat-number">${data.new_count}</div>
+            <div class="stat-label">Produto(s)<br/>novo(s)</div>
+          </div>
+          <div class="stat-card removed-products">
+            <div class="stat-number">${data.removed_count ?? 0}</div>
+            <div class="stat-label">Produto(s)<br/>removido(s)</div>
+          </div>
+          <div class="stat-card modified-price">
+            <div class="stat-number">${data.modified_count}</div>
+            <div class="stat-label">Preço(s)<br/>alterado(s)</div>
+          </div>
+          <div class="stat-card unchanged">
+            <div class="stat-number">${data.unchanged_count}</div>
+            <div class="stat-label">Sem<br/>alteração</div>
+          </div>
+        </div>
+        ${colDebug}
+        ${dlBtn}
+      </div>`);
+  }
+
+  function showError(msg, detail) {
+    const detailHtml = detail
+      ? `<details style="margin-top:8px"><summary style="font-size:11px;cursor:pointer">Detalhes técnicos</summary><pre>${detail}</pre></details>`
+      : '';
+    show(`
+      <div class="result-error">
+        <div class="err-ico">⚠️</div>
+        <div>
+          <h4>Erro ao processar</h4>
+          <p>${msg}</p>
+          ${detailHtml}
+        </div>
+      </div>`);
+  }
+
+  function show(html) {
+    const el = document.getElementById('results');
+    el.innerHTML = html;
+    el.style.display = 'block';
+  }
+
+  // ── Download ───────────────────────────────────────────────────
+  function downloadExcel() {
+    if (!excelB64) return;
+    const bytes = atob(excelB64);
+    const arr   = new Uint8Array(bytes.length);
+    for (let i = 0; i < bytes.length; i++) arr[i] = bytes.charCodeAt(i);
+    const blob  = new Blob([arr], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const url   = URL.createObjectURL(blob);
+    const a     = document.createElement('a');
+    a.href = url; a.download = excelName;
+    document.body.appendChild(a); a.click();
+    document.body.removeChild(a); URL.revokeObjectURL(url);
+  }
+</script>
+</body>
+</html>

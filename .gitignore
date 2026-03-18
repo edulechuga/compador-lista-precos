@@ -1,0 +1,23 @@
+# Environment & secrets
+.env
+credentials.json
+token.json
+
+# Temporary processing files (always regenerated)
+.tmp/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+*.egg-info/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Data and Logs
+*.xlsx
+logs/
